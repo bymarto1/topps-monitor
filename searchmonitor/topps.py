@@ -23,7 +23,7 @@ streamFormatter = logging.StreamHandler()
 
 streamFormatter.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
 
-fileFormatter = logging.FileHandler("kickz.jp.logs")
+fileFormatter = logging.FileHandler("topps.logs")
 
 fileFormatter.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
 

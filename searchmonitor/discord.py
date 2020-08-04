@@ -7,9 +7,7 @@ import util
 def make_embed(details):
 		
 	#separator='\n'
-	
 	#sizes = separator.join(details['sizes'])
-	
 	#QUICKTASKS CONFIG
 	"""
 	quicktasks = []
@@ -23,6 +21,8 @@ def make_embed(details):
 		'value': orbit + t3k
 	})
 	"""
+
+	print(details)
 	return [{
 				
 				'title': "{}\n".format(details['title']),
@@ -36,14 +36,7 @@ def make_embed(details):
 								"name": "Price",
 								"value": details['price']
 ,
-							},
-							"""{
-								"name": "Sizes",
-								"value": sizes
-,
-							},
-							"""
-							#*quicktasks
+							}
 							],
 			'footer': {
 				'icon_url': 'https://pbs.twimg.com/profile_images/1268224680697225216/6WiKMaJl_400x400.jpg',   # add cookgroup photo
