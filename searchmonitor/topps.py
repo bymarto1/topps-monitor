@@ -68,7 +68,7 @@ def get_price(sc):
 	return re.search('"price">(.+?)<',sc).group(1).strip()
  
 class Monitor:
-	def __init__(self, id, *, urlQueue, proxyBuffer, stock_info, session):
+	def __init__(self, id, *, urlQueue, proxyBuffer, stock_info, session , webhook):
 		self.urlQueue = urlQueue
 		self.proxyBuffer = proxyBuffer
 		self.stock_info = stock_info
@@ -90,13 +90,12 @@ class Monitor:
 	
 	
 	async def process_url(self, url, proxy):
-		restocked = False 
 		url = 'https://www.topps.com/cards-collectibles.html?property=11227'
 		urlts = url +"&ts="+ str(time.time()) 
 		#print (urlts)
 		time.sleep(random.randint(3, 5))
 		productinfo = {}
-		async with self.session.get(urlts ) as response:
+		async with self.session.get(urlts, proxy = proxy ) as response:
 			response.text_content = await response.text()
 		
 		#print(response.text_content)
@@ -136,14 +135,7 @@ class Monitor:
 
 
 
-	"""
 
-		if self.first:
-			self.stock_info['title'] = get_title(response.text_content)
-			self.stock_info['url'] = url
-			self.stock_info['imgUrl'] = get_image(response.text_content)
-			self.stock_info['price'] =get_price(response.text_content)
-	"""
 		
 	
 	async def start(self, wait):
@@ -180,6 +172,8 @@ async def main(urls, proxies, workers, wait_time):
 	for url in urls:
 		urlQueue.put_nowait(url)
 	
+	webhook = util.nonblank_lines('webhook.txt')
+
 
 	headers = {
 		'authority': 'www.topps.com',
@@ -203,7 +197,7 @@ async def main(urls, proxies, workers, wait_time):
 
 	session = aiohttp.ClientSession(headers = headers, timeout = timeout, cookie_jar = aiohttp.CookieJar() )
 	
-	monitors = [Monitor(f'worker-{i}', stock_info = stock_info, session = session, urlQueue = urlQueue, proxyBuffer = proxyBuffer) for i in range(workers)]
+	monitors = [Monitor(f'worker-{i}', stock_info = stock_info, session = session, urlQueue = urlQueue, proxyBuffer = proxyBuffer, webhook = webhook[0]) for i in range(workers)]
 	
 	coros = [monitor.start(wait = wait_time) for monitor in monitors]
 	

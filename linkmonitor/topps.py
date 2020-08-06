@@ -69,7 +69,7 @@ def get_price(sc):
 	return re.search(r'{"final_price":(.*?),',sc).group(1).strip()
  
 class Monitor:
-	def __init__(self, id, *, urlQueue, proxyBuffer, stock_info, session):
+	def __init__(self, id, *, urlQueue, proxyBuffer, stock_info, session, webhook):
 		self.urlQueue = urlQueue
 		self.proxyBuffer = proxyBuffer
 		self.stock_info = stock_info
@@ -176,6 +176,7 @@ async def main(urls, proxies, workers, wait_time):
 	for url in urls:
 		urlQueue.put_nowait(url)
 	
+	webhook = util.nonblank_lines('webhook.txt')
 
 	headers = {
 		'authority': 'www.topps.com',
@@ -199,7 +200,7 @@ async def main(urls, proxies, workers, wait_time):
 
 	session = aiohttp.ClientSession(headers = headers, timeout = timeout, cookie_jar = aiohttp.CookieJar() )
 	
-	monitors = [Monitor(f'worker-{i}', stock_info = stock_info, session = session, urlQueue = urlQueue, proxyBuffer = proxyBuffer) for i in range(workers)]
+	monitors = [Monitor(f'worker-{i}', stock_info = stock_info, session = session, urlQueue = urlQueue, proxyBuffer = proxyBuffer, webhook = webhook[0]) for i in range(workers)]
 	
 	coros = [monitor.start(wait = wait_time) for monitor in monitors]
 	
