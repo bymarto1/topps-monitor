@@ -8,7 +8,7 @@ import traceback
 import time
 import re
 import random
-import demjson
+import json
 from urllib.parse import urljoin
 from contextlib import asynccontextmanager
 import random
@@ -93,6 +93,8 @@ class Monitor:
 		restocked = False
 		urlts = url +"?ts="+ str(time.time()) 
 		#print (urlts)
+		time.sleep(random.randint(3, 5))
+
 		async with self.session.get(urlts ) as response:
 			response.text_content = await response.text()
 		
@@ -138,7 +140,6 @@ class Monitor:
 				screen_logger.info("{} > **Discord Notification Failed for {}**".format(self.id, url))
 
 		self.first = False
-		time.sleep(random.uniform(0, 2))
 		
 	
 	async def start(self, wait):
@@ -175,39 +176,23 @@ async def main(urls, proxies, workers, wait_time):
 	for url in urls:
 		urlQueue.put_nowait(url)
 	
+
 	headers = {
 		'authority': 'www.topps.com',
 		'method': 'GET',
-		'path': '/luis-robert-mlb-topps-now-reg-card-43.html',
 		'scheme': ' https',
 		'accept': ' text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
 		'accept-encoding': ' gzip, deflate, br',
 		'accept-language': ' es,ca;q=0.9,en;q=0.8,de;q=0.7',
-		'referer': ' https://www.topps.com/cards-collectibles.html?p=1',
+		'referer': ' https://www.topps.com/cards-collectibles.html?p=5',
 		'sec-fetch-dest': ' document',
 		'sec-fetch-mode': ' navigate',
 		'sec-fetch-site': ' same-origin',
 		'sec-fetch-user': ' ?1',
 		'upgrade-insecure-requests': ' 1',
-		'user-agent': ' Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.3',
+		'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.3',
 	}
-	"""
-	headers = {
 
-			"authority": "www.topps.com",
-			'method':  'GET',
-			"user-Agent": " Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.3",
-			"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-			"accept-Language": "es,ca;q=0.9,en;q=0.8,de;q=0.7",
-			"accept-Encoding": "gzip, deflate, br",
-			'referer': ' https://www.topps.com/cards-collectibles.html?p=1',
-			'sec-fetch-dest': ' document',
-			'sec-fetch-mode': ' navigate',
-			'sec-fetch-site': ' same-origin',
-			"upgrade-Insecure-Requests": "1",
-			"sec-fetch-user": "?1",
-		}
-	"""
 	timeout = aiohttp.ClientTimeout(total = 8)
 	
 	stock_info = {}

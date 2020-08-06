@@ -21,11 +21,9 @@ def make_embed(details):
 		'value': orbit + t3k
 	})
 	"""
-
-	print(details)
 	return [{
 				
-				'title': "{}\n".format(details['title']),
+				'title': f"{details['title']}\n",
 				'url': details['url'],
 				'color': 0x8c7656,
 				'thumbnail': {
@@ -51,7 +49,6 @@ class embedSender:
 		self.wait_time_on_error = wait_time_on_error
 		
 	async def send(self, embed):
-		
 		data = {
 			'username' : 'TOPPS', # add monitor name
 			'avatar_url': 'https://pbs.twimg.com/profile_images/1268224680697225216/6WiKMaJl_400x400.jpg', #add webstore photo

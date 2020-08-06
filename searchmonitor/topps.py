@@ -7,13 +7,13 @@ import logging
 import traceback
 import time
 import re
-import demjson
-import urllib.parse 
+import random
+import json
+from urllib.parse import urljoin
 from contextlib import asynccontextmanager
 import random
 from datetime import datetime
 
-webhook = "https://discordapp.com/api/webhooks/730434133922152508/6fEhZguwXC4hPvbKUh_g0XUMXeQJeTMjTwAP5R0bX9TzRbaHGftXdy1In9frcj0IGL3u"
 
 
 screen_logger = logging.getLogger('screen_logger')
@@ -47,7 +47,7 @@ def raise_for_status(response, skip = ()):
 		raise invalid_status_code('{} -> {}'.format(response.url, response.status))
 	
 def log_based_on_response(id, response):
-	screen_logger.info("{} > {} -> {}  -> {}" .format(id, str(response.url), response.status, response.headers['server-timing'][16:] ))
+	screen_logger.info("{} > {} -> {} " .format(id, str(response.url), response.status))
 	#print(response.headers['server-timing'])
 
 def log_exception(id, ex, *, traceback = True):
@@ -58,15 +58,15 @@ def log_exception(id, ex, *, traceback = True):
 
 
 def get_title(sc):
-    return re.search("prodNameId\">(.+?)<",sc).group(1).strip()
+    return re.search('alt="(.+?)"',sc).group(1).strip()
     
 
 def get_image(sc):
-    return re.search("class=\"productDetailZoom\" src=\"(.+?)\"",sc).group(1).strip()
+    return re.search('src="(.+?)"',sc).group(1).strip()
 
 def get_price(sc):
-	return re.search(r'itemprop=\"price\"\>(.+?)<',sc).group(1).strip()
-
+	return re.search('"price">(.+?)<',sc).group(1).strip()
+ 
 class Monitor:
 	def __init__(self, id, *, urlQueue, proxyBuffer, stock_info, session):
 		self.urlQueue = urlQueue
@@ -74,119 +74,89 @@ class Monitor:
 		self.stock_info = stock_info
 		self.session = session
 		self.first = True
+		self.instock = False
 		self.id = id
+		self.oldUrls = []
 		self.embed_sender = discord.embedSender(webhook)
-		self.found = False
 	
 	@asynccontextmanager
-	async def load_keyword(self, *, wait):
-		keyword = await self.urlQueue.get()
+	async def load_url(self, *, wait):
+		url = await self.urlQueue.get()
 		try:
-			yield keyword
+			yield url
 		finally:
-			self.urlQueue.put_nowait(keyword)
+			self.urlQueue.put_nowait(url)
 			await asyncio.sleep(wait)
 	
 	
-	async def process_url(self, keyword,blacklist , proxy):
-		restocked = False	
-
-		while not self.found:
-			url = 'https://www.kickz.com/en/catalog/fullTextSearch?initialQueryString=' +  urllib.parse.quote(keyword)
-			ts = datetime.now()
-			urlts = url +"&ts="+ str(ts) 
-			async with self.session.post(urlts , proxy = proxy) as response:
-				response.text_content = await response.text()
-			
-			#print(response.text_content)
-			print(url)
-			log_based_on_response(self.id, response)
-			raise_for_status(response)
-			
-			products = re.findall('class="categoryElementSpecial(.+?)<!--/categoryElement-->',response.text_content , flags=re.S)
-			
-			#print(products)
-			for product in products:
-				link =''
-				link = re.search('link="(.+?)"',product , flags=re.S).group(1)
-				if link!='':
-					if blacklist.count(link)==0:
-						self.stock_info['title'] =  re.search('title="(.+?)"',product).group(1).strip()
-						self.stock_info['url'] = link
-						self.stock_info['imgUrl'] = re.search('  src="(.+?)"',product).group(1).strip()
-						self.stock_info['sizes'] = ['PRODUCT IS LIVE!']
-						self.stock_info['price'] = 'N/A'
-						embed = discord.make_embed(self.stock_info)
-						if await self.embed_sender.send(embed):
-							screen_logger.info("{} > **Discord Notification Sent for {}**".format(self.id, self.stock_info['url']))
-						else:
-							screen_logger.info("{} > **Discord Notification Failed for {}**".format(self.id,self.stock_info['url']))
-						self.found = True
-
-			print("PRODUCT FOUND!")
-			print(self.stock_info['url'])
-
-
-
-		ts = datetime.now()
-		urlts = self.stock_info['url'] +"?ts="+ str(ts) 
-		async with self.session.post(urlts , proxy = proxy) as response:
+	async def process_url(self, url, proxy):
+		restocked = False 
+		url = 'https://www.topps.com/cards-collectibles.html?property=11227'
+		urlts = url +"&ts="+ str(time.time()) 
+		#print (urlts)
+		time.sleep(random.randint(3, 5))
+		productinfo = {}
+		async with self.session.get(urlts ) as response:
 			response.text_content = await response.text()
 		
+		#print(response.text_content)
 		log_based_on_response(self.id, response)
 		raise_for_status(response)
+		if(response.status==403):
+			 print("DATADOME")	
+		else:
+			products = re.findall('<span class="price-container price-final_price tax weee"(.+?)price-box price-final_price' ,response.text_content , flags=re.S)
+			#print(products)
+			for product in products:
+				productinfo['url'] = re.search('class="product-item-link"\n                               href="(.+?)"', product, flags= re.S).group(1).strip()
+				#print(productinfo['url'])
+				if self.first:
+					self.oldUrls.append(productinfo['url'])
+				else:
+					if productinfo['url'] not in self.oldUrls:
+						productinfo['title'] = get_title(product)
+						productinfo['imgUrl'] = get_image(product)
+						productinfo['price'] =get_price(product)
+						print(productinfo)
+						self.oldUrls.append(productinfo['url'])
+						screen_logger.info("{} > {} NEW PRODUCTS".format(self.id, url))
 
-		current_stock_info = {}
+						embed = discord.make_embed(productinfo)
+
+						if await self.embed_sender.send(embed):
+							screen_logger.info("{} > **Discord Notification Sent for {}**".format(self.id, url))
+						else:
+							screen_logger.info("{} > **Discord Notification Failed for {}**".format(self.id, url))
+						self.oldUrls.pop(0)
+						
+			self.first = False
+
+				
+				
+
+
+
+	"""
 
 		if self.first:
+			self.stock_info['title'] = get_title(response.text_content)
+			self.stock_info['url'] = url
+			self.stock_info['imgUrl'] = get_image(response.text_content)
 			self.stock_info['price'] =get_price(response.text_content)
-			restocked = True
-			current_stock_info = self.stock_info
-
-		sizecontainer = re.search('1SizeContainer(.+?)2SizeContainer',response.text_content , flags=re.S).group(1)
-		sizes = re.findall("data-size=\"(.*?)\"",sizecontainer )
-		print(sizes)
-		current_stock_info['sizes'] = sizes
-
-		if(not self.first):
-			#print(len(self.stock_info.get('sizes')))
-			if self.stock_info.get('sizes') != current_stock_info.get('sizes') and len(self.stock_info.get('sizes'))<=len(current_stock_info.get('sizes')):
-					restocked = True
-			current_stock_info['title'] =self.stock_info['title']
-			current_stock_info['url'] = self.stock_info['url']
-			current_stock_info['imgUrl'] = self.stock_info['imgUrl']
-			current_stock_info['price'] = self.stock_info['price']
+	"""
 		
-		if restocked:
-			screen_logger.info("{} > {} Restocked Sizes".format(self.id, self.stock_info['url']))
-			
-			#for size_info in restocked:
-			
-		#		screen_logger.info("{} > {}-{}".format(self.id, size_info['size_code'], size_info['color_name']))
-			
-			embed = discord.make_embed(current_stock_info)
-			
-			if await self.embed_sender.send(embed):
-				screen_logger.info("{} > **Discord Notification Sent for {}**".format(self.id, self.stock_info['url']))
-			else:
-				screen_logger.info("{} > **Discord Notification Failed for {}**".format(self.id,self.stock_info['url']))
-			restocked = False
-
-		self.stock_info = current_stock_info	
-		self.first = False  
 	
-	
-	async def start(self,blacklist, wait):
+	async def start(self, wait):
 		proxy = await self.proxyBuffer.get_and_inc()
 		
 		screen_logger.info('{} > Using Proxy {}'.format(self.id, proxy))
 		
 		while True:
-			async with self.load_keyword(wait = wait) as keyword:
+			async with self.load_url(wait = wait) as url:
 				#screen_logger.info(f"{self.id} > Checking {url}")
 				for i in range(2):
 					try:
-						await self.process_url(keyword,blacklist , proxy)
+						await self.process_url(url, proxy)
 						break
 					except Exception as e:
 						log_exception(self.id, e, traceback = False)
@@ -200,39 +170,42 @@ class Monitor:
 
 
 
-async def main(keywords , blacklist, proxies, workers, wait_time):
+async def main(urls, proxies, workers, wait_time):
 	#queries = [{'url': link, 'previousStockedSizes': []} for link in queries]
 	
 	proxyBuffer = util.readOnlyAsyncCircularBuffer(proxies)
 	
 	urlQueue = asyncio.Queue()
 	
-	for keyword in keywords:
-		urlQueue.put_nowait(keyword)
+	for url in urls:
+		urlQueue.put_nowait(url)
 	
-	headers = {
-			#"host": "kickz.com",
 
-			"authority": "www.kickz.com",
-			"user-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0",
-			"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-			"accept-Language": "es,ca;q=0.9,en;q=0.8,de;q=0.7",
-			"accept-Encoding": "gzip, deflate, br",
-			"connection": "keep-alive",
-			"upgrade-Insecure-Requests": "1",
-			"cache-control": "no-cache",
-			"pragma": "no-cache"
-		}
-		
+	headers = {
+		'authority': 'www.topps.com',
+		'method': 'GET',
+		'scheme': ' https',
+		'accept': ' text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+		'accept-encoding': ' gzip, deflate, br',
+		'accept-language': ' es,ca;q=0.9,en;q=0.8,de;q=0.7',
+		'referer': ' https://www.topps.com/cards-collectibles.html?p=5',
+		'sec-fetch-dest': ' document',
+		'sec-fetch-mode': ' navigate',
+		'sec-fetch-site': ' same-origin',
+		'sec-fetch-user': ' ?1',
+		'upgrade-insecure-requests': ' 1',
+		'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.3',
+	}
+
 	timeout = aiohttp.ClientTimeout(total = 8)
 	
 	stock_info = {}
 
-	session = aiohttp.ClientSession(headers = headers, timeout = timeout, cookie_jar = aiohttp.DummyCookieJar() )
+	session = aiohttp.ClientSession(headers = headers, timeout = timeout, cookie_jar = aiohttp.CookieJar() )
 	
 	monitors = [Monitor(f'worker-{i}', stock_info = stock_info, session = session, urlQueue = urlQueue, proxyBuffer = proxyBuffer) for i in range(workers)]
 	
-	coros = [monitor.start(blacklist ,wait = wait_time) for monitor in monitors]
+	coros = [monitor.start(wait = wait_time) for monitor in monitors]
 	
 	await asyncio.gather(*coros)
 	
@@ -240,22 +213,19 @@ async def main(keywords , blacklist, proxies, workers, wait_time):
 		
 if __name__ == "__main__":
 	
-	keywords_file = 'keywords.txt'
-	
+	url_file = 'keywords.txt'
 	proxy_file = 'proxies.txt'
 	
-	blacklist_file = 'blacklist.txt'
+	urls = util.nonblank_lines(url_file)
 	
-	keywords = util.nonblank_lines(keywords_file)
-
-	blacklist = util.nonblank_lines(blacklist_file)
-
 	proxies = util.load_proxies_from_file(proxy_file, shuffle = True)
 
-	workers = len(keywords)
+	workers = len(urls)
 	
 	wait_time = 0
-	
+
+
 	policy = asyncio.WindowsSelectorEventLoopPolicy()
 	asyncio.set_event_loop_policy(policy)
-	asyncio.run(main(keywords, blacklist, proxies, workers, wait_time))
+
+	asyncio.run(main(urls, proxies, workers, wait_time))
