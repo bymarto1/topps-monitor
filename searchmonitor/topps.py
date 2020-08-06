@@ -115,6 +115,7 @@ class Monitor:
 					self.oldUrls.append(productinfo['url'])
 				else:
 					if productinfo['url'] not in self.oldUrls:
+						self.oldUrls.append(productinfo['url'])
 						productinfo['title'] = get_title(product)
 						productinfo['imgUrl'] = get_image(product)
 						productinfo['price'] =get_price(product)
@@ -128,8 +129,11 @@ class Monitor:
 							screen_logger.info("{} > **Discord Notification Sent for {}**".format(self.id, url))
 						else:
 							screen_logger.info("{} > **Discord Notification Failed for {}**".format(self.id, url))
-						self.oldUrls.pop(0)
-						
+						if len(self.oldUrls)>=24:
+							self.oldUrls.pop(0)
+			print('-----------------')
+			print(self.oldUrls)
+			print('---------------------')			
 			self.first = False
 
 				
