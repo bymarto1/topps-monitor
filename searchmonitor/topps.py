@@ -93,7 +93,9 @@ class Monitor:
 		url = 'https://www.topps.com/cards-collectibles.html?property=11227'
 		urlts = url +"&ts="+ str(time.time()) 
 		#print (urlts)
-		time.sleep(random.randint(3, 5))
+		delay = random.randint(1, 3)
+		print(delay)
+		time.sleep(delay)
 		productinfo = {}
 		async with self.session.get(urlts, proxy = proxy ) as response:
 			response.text_content = await response.text()

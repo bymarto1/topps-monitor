@@ -97,7 +97,7 @@ class Monitor:
 		print(delay)
 		time.sleep(delay)
 	
-		async with self.session.get(urlts ) as response:
+		async with self.session.get(urlts , proxy = proxy ) as response:
 			response.text_content = await response.text()
 		
 		#print(response.text_content)
