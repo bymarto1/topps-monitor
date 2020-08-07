@@ -91,10 +91,10 @@ class Monitor:
 	
 	async def process_url(self, url, proxy):
 		url = 'https://www.topps.com/cards-collectibles.html?property=11227'
-		urlts = url +"&ts="+ str(time.time()) 
+		urlts = url +'&='+ str(time.time()) 
 		#print (urlts)
 		delay = random.randint(1, 3)
-		print(delay)
+		#print(delay)
 		time.sleep(delay)
 		productinfo = {}
 		async with self.session.get(urlts, proxy = proxy ) as response:
@@ -131,9 +131,9 @@ class Monitor:
 							screen_logger.info("{} > **Discord Notification Failed for {}**".format(self.id, url))
 						if len(self.oldUrls)>=24:
 							self.oldUrls.pop(0)
-			print('-----------------')
-			print(self.oldUrls)
-			print('---------------------')			
+			#print('-----------------')
+			#print(self.oldUrls)
+			#print('---------------------')			
 			self.first = False
 
 				
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 	wait_time = 0
 
 
-	policy = asyncio.WindowsSelectorEventLoopPolicy()
-	asyncio.set_event_loop_policy(policy)
+	#policy = asyncio.WindowsSelectorEventLoopPolicy()
+	#asyncio.set_event_loop_policy(policy)
 
 	asyncio.run(main(urls, proxies, workers, wait_time))
