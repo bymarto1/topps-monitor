@@ -47,7 +47,7 @@ def raise_for_status(response, skip = ()):
 		raise invalid_status_code('{} -> {}'.format(response.url, response.status))
 	
 def log_based_on_response(id, response):
-	screen_logger.info("{} > {} -> {} " .format(id, str(response.url), response.status))
+	screen_logger.info("{} > {} -> {} ->{}" .format(id, str(response.url), response.status,  response.headers['X-Cache']))
 	#print(response.headers['server-timing'])
 
 def log_exception(id, ex, *, traceback = True):
@@ -91,7 +91,7 @@ class Monitor:
 	
 	async def process_url(self, url, proxy):
 		url = 'https://www.topps.com/cards-collectibles.html?property=11227'
-		urlts = url +'&='+ str(time.time()) 
+		urlts = url +'&ts='+ str(time.time()) 
 		#print (urlts)
 		delay = random.randint(1, 3)
 		#print(delay)
@@ -99,6 +99,8 @@ class Monitor:
 		productinfo = {}
 		async with self.session.get(urlts, proxy = proxy ) as response:
 			response.text_content = await response.text()
+		
+		
 		
 		#print(response.text_content)
 		log_based_on_response(self.id, response)
@@ -187,7 +189,7 @@ async def main(urls, proxies, workers, wait_time):
 		'scheme': ' https',
 		'accept': ' text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
 		'accept-encoding': ' gzip, deflate, br',
-		'accept-language': ' es,ca;q=0.9,en;q=0.8,de;q=0.7',
+		'accept-language': 'en-US,en;q=0.5',
 		'referer': ' https://www.topps.com/cards-collectibles.html?p=5',
 		'sec-fetch-dest': ' document',
 		'sec-fetch-mode': ' navigate',
@@ -225,7 +227,7 @@ if __name__ == "__main__":
 	wait_time = 0
 
 
-	#policy = asyncio.WindowsSelectorEventLoopPolicy()
-	#asyncio.set_event_loop_policy(policy)
+	policy = asyncio.WindowsSelectorEventLoopPolicy()
+	asyncio.set_event_loop_policy(policy)
 
 	asyncio.run(main(urls, proxies, workers, wait_time))
