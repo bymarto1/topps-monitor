@@ -93,7 +93,7 @@ class Monitor:
 		restocked = False
 		urlts = url +"?ts="+ str(time.time()) 
 		#print (urlts)
-		delay = random.randint(1, 3)
+		delay = random.randint(3, 6)
 		print(delay)
 		time.sleep(delay)
 	
@@ -101,11 +101,13 @@ class Monitor:
 			response.text_content = await response.text()
 		
 		#print(response.text_content)
+		#print(response.text_content)
 		log_based_on_response(self.id, response)
 		raise_for_status(response)
-		if response.status == 403:
-			raise 'DATADOME'
-		
+		if(response.status==403):
+			 print("DATADOME")	
+
+
 		if '<span>Sold Out</span>'  in response.text_content:
 			print( url , 'OOS')
 			instock = False

@@ -44,6 +44,9 @@ class invalid_status_code(Exception):
 
 def raise_for_status(response, skip = ()):
 	if not (response.status == 200 or response.status == 404 or response.status in skip):
+		delay = random.randint(5, 6)
+		#print(delay)
+		time.sleep(delay)
 		raise invalid_status_code('{} -> {}'.format(response.url, response.status))
 	
 def log_based_on_response(id, response):
